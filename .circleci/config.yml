@@ -1,0 +1,47 @@
+version: 2
+jobs:
+  deploy:
+    docker:
+      - image: circleci/golang:1.10
+
+    working_directory: /go/src/github.com/kawasin73/wanpoll
+
+    environment:
+      TEST_RESULTS: /tmp/test-results
+
+    steps:
+      - run:
+          name: installing dep
+          command: go get -u github.com/golang/dep/cmd/dep
+
+      - run:
+          name: installing github-release
+          command: go get -u github.com/c4milo/github-release
+
+      - checkout
+
+      - run:
+          name: installing dependencies for wanpoll
+          command: dep ensure
+
+      - run:
+          name: build
+          command: ./script/build-all.bash
+
+      - deploy:
+          command: GITHUB_TOKEN=$GITHUB_ACCESS_TOKEN github-release "kawasin73/wanpoll" "$CIRCLE_TAG" "master" upload "./release/*"
+
+      - store_artifacts:
+          path: ./release
+          destination: release
+
+workflows:
+  version: 2
+  build-and-deploy:
+    jobs:
+      - deploy:
+          filters:
+            tags:
+              only: /v[0-9]+(\.[0-9]+)*/
+            branches:
+              ignore: /.*/
